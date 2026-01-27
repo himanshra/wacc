@@ -1,6 +1,8 @@
 mod lexer;
+mod parser;
 
-use lexer::{Lexer, TokenKind};
+use lexer::Lexer;
+use parser::Parser;
 use std::env;
 use std::fs;
 
@@ -12,21 +14,12 @@ fn main() {
         std::process::exit(1);
     }
 
-    let filename = &args[1];
+    let source = fs::read_to_string(&args[1]).expect("failed to read input file");
 
-    println!("Reading: {}", filename);
+    let lexer = Lexer::new(&source);
+    let mut parser = Parser::new(lexer);
 
-    let source = fs::read_to_string(filename)
-        .expect(format!("failed to read input file: {}", filename).as_str());
+    let return_value = parser.parse_program();
 
-    let mut lexer = Lexer::new(&source);
-
-    let mut tok = lexer.next_token();
-
-    while tok.kind != TokenKind::Eof {
-        println!("{:?}", tok.kind);
-        tok = lexer.next_token();
-    }
-
-    println!("{:?}", tok.kind);
+    println!("parsed successfully, return value = {}", return_value);
 }
