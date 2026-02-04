@@ -4,6 +4,7 @@ pub enum TokenKind {
     Void,
     Return,
     Main,
+    Identifier(String),
     LParen,
     RParen,
     LBrace,
@@ -11,7 +12,7 @@ pub enum TokenKind {
     Semicolon,
     Number(i64),
     Eof,
-    Invalid(String),
+    Invalid(char),
 }
 
 #[derive(Debug, Clone)]
@@ -33,6 +34,8 @@ impl Lexer {
     }
 
     pub fn next_token(&mut self) -> Token {
+        self.skip_whitespace();
+        self.skip_comments();
         self.skip_whitespace();
 
         if self.pos >= self.input.len() {
@@ -58,15 +61,38 @@ impl Lexer {
             '{' => TokenKind::LBrace,
             '}' => TokenKind::RBrace,
             ';' => TokenKind::Semicolon,
-            _ => TokenKind::Invalid(c.to_string()),
+            _ => TokenKind::Invalid(c),
         };
 
         Token { kind }
     }
 
     fn skip_whitespace(&mut self) {
-        while self.pos < self.input.len() && self.input[self.pos].is_whitespace() {
+        while self.pos < self.input.len()
+            && (self.input[self.pos].is_whitespace() || self.input[self.pos] == '\n')
+        {
             self.pos += 1;
+        }
+    }
+
+    fn skip_comments(&mut self) {
+        loop {
+            if self.pos + 1 < self.input.len()
+                && self.input[self.pos] == '/'
+                && self.input[self.pos + 1] == '/'
+            {
+                self.pos += 2;
+
+                while self.pos < self.input.len() && self.input[self.pos] != '\n' {
+                    self.pos += 1;
+                }
+
+                if self.pos < self.input.len() && self.input[self.pos] == '\n' {
+                    self.pos += 1;
+                }
+            } else {
+                break;
+            }
         }
     }
 
@@ -89,7 +115,7 @@ impl Lexer {
             "void" => TokenKind::Void,
             "return" => TokenKind::Return,
             "main" => TokenKind::Main,
-            _ => TokenKind::Invalid(word),
+            _ => TokenKind::Identifier(word),
         };
 
         Token { kind }

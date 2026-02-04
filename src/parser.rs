@@ -1,5 +1,20 @@
 use crate::lexer::{Lexer, TokenKind};
 
+#[derive(Debug)]
+pub enum Expr {
+    Number(i64),
+}
+
+#[derive(Debug)]
+pub enum Stmt {
+    Return(Expr),
+}
+
+#[derive(Debug)]
+pub struct Program {
+    pub body: Stmt,
+}
+
 pub struct Parser {
     lexer: Lexer,
     current: TokenKind,
@@ -14,47 +29,60 @@ impl Parser {
         }
     }
 
-    fn advance(&mut self) {
-        self.current = self.lexer.next_token().kind;
+    fn advance(&mut self) -> Result<(), String> {
+        let next = self.lexer.next_token().kind;
+
+        if let TokenKind::Invalid(c) = next {
+            return Err(format!("lexer error: invalid character '{}'", c));
+        }
+
+        self.current = next;
+        Ok(())
     }
 
-    fn expect(&mut self, expected: TokenKind) {
+    fn expect(&mut self, expected: TokenKind) -> Result<(), String> {
         if self.current == expected {
-            self.advance();
+            self.advance()?;
+            Ok(())
         } else {
-            eprintln!(
+            Err(format!(
                 "parser error: expected {:?}, found {:?}",
                 expected, self.current
-            );
-            std::process::exit(1);
+            ))
         }
     }
 
-    pub fn parse_program(&mut self) -> i64 {
-        self.expect(TokenKind::Int);
-        self.expect(TokenKind::Main);
-        self.expect(TokenKind::LParen);
-        self.expect(TokenKind::Void);
-        self.expect(TokenKind::RParen);
-        self.expect(TokenKind::LBrace);
-        self.expect(TokenKind::Return);
-
-        let return_value = match &self.current {
+    fn parse_expr(&mut self) -> Result<Expr, String> {
+        match &self.current {
             TokenKind::Number(n) => {
-                let v = *n;
-                self.advance();
-                v
+                let value = *n;
+                self.advance()?;
+                Ok(Expr::Number(value))
             }
-            _ => {
-                eprintln!("parser error: expected number after return");
-                std::process::exit(1);
-            }
-        };
+            _ => Err("expected number".to_string()),
+        }
+    }
 
-        self.expect(TokenKind::Semicolon);
-        self.expect(TokenKind::RBrace);
-        self.expect(TokenKind::Eof);
+    fn parse_return(&mut self) -> Result<Stmt, String> {
+        self.expect(TokenKind::Return)?;
+        let expr = self.parse_expr()?;
+        self.expect(TokenKind::Semicolon)?;
+        Ok(Stmt::Return(expr))
+    }
 
-        return_value
+    pub fn parse_program(&mut self) -> Result<Program, String> {
+        self.expect(TokenKind::Int)?;
+        self.expect(TokenKind::Main)?;
+        self.expect(TokenKind::LParen)?;
+        self.expect(TokenKind::Void)?;
+        self.expect(TokenKind::RParen)?;
+        self.expect(TokenKind::LBrace)?;
+
+        let stmt = self.parse_return()?;
+
+        self.expect(TokenKind::RBrace)?;
+        self.expect(TokenKind::Eof)?;
+
+        Ok(Program { body: stmt })
     }
 }
