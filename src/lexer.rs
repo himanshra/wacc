@@ -36,6 +36,7 @@ impl Lexer {
     pub fn next_token(&mut self) -> Token {
         self.skip_whitespace();
         self.skip_comments();
+        self.skip_block_comment();
         self.skip_whitespace();
 
         if self.pos >= self.input.len() {
@@ -96,6 +97,26 @@ impl Lexer {
         }
     }
 
+    fn skip_block_comment(&mut self) {
+        if self.pos + 1 < self.input.len()
+            && self.input[self.pos] == '/'
+            && self.input[self.pos + 1] == '*'
+        {
+            self.pos += 2;
+
+            while self.pos + 1 < self.input.len() {
+                if self.input[self.pos] == '*' && self.input[self.pos + 1] == '/' {
+                    self.pos += 2;
+                    return;
+                }
+                self.pos += 1;
+            }
+
+            eprintln!("lexer error: unterminated block comment");
+            std::process::exit(1);
+        }
+    }
+
     fn identifier(&mut self) -> Token {
         let start = self.pos;
 
@@ -126,6 +147,19 @@ impl Lexer {
 
         while self.pos < self.input.len() && self.input[self.pos].is_ascii_digit() {
             self.pos += 1;
+        }
+
+        if self.pos < self.input.len()
+            && (self.input[self.pos].is_ascii_alphabetic() || self.input[self.pos] == '_')
+        {
+            let mut bad = String::new();
+            while self.pos < self.input.len() && self.input[self.pos].is_ascii_alphanumeric() {
+                bad.push(self.input[self.pos]);
+                self.pos += 1;
+            }
+
+            eprintln!("lexer error: invalid token starting with digit: {}", bad);
+            std::process::exit(1);
         }
 
         let num: String = self.input[start..self.pos].iter().collect();
