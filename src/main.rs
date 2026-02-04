@@ -1,7 +1,9 @@
+mod codegen;
 mod lexer;
 mod parser;
 
 use crate::lexer::TokenKind;
+use codegen::Codegen;
 use lexer::Lexer;
 use parser::Parser;
 use std::env;
@@ -10,8 +12,11 @@ use std::fs;
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    let stage = args[1].to_string();
-    let input_file = args[2].to_string();
+    let (stage, input_file) = if args.len() == 2 {
+        ("".to_string(), args[1].to_string())
+    } else {
+        (args[1].to_string(), args[2].to_string())
+    };
 
     eprintln!("stage: {stage}, input_file: {input_file}");
 
@@ -38,16 +43,16 @@ fn main() {
 
     let lexer = Lexer::new(&source);
     let mut parser = Parser::new(lexer);
+    let ast = parser.parse_program().unwrap();
 
-    match parser.parse_program() {
-        Ok(ast) => {
-            if std::env::var("DUMP_AST").is_ok() {
-                eprintln!("{:#?}", ast);
-            }
-        }
-        Err(err) => {
-            eprintln!("{}", err);
-            std::process::exit(1);
-        }
+    if std::env::var("DUMP_AST").is_ok() {
+        eprintln!("{:#?}\n", ast);
     }
+
+    if stage.eq("--parse") {
+        std::process::exit(0);
+    }
+
+    let asm = Codegen::generate(&ast);
+    println!("{}", asm);
 }
