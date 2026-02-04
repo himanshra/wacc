@@ -55,4 +55,11 @@ fn main() {
 
     let asm = Codegen::generate(&ast);
     println!("{}", asm);
+
+    /*
+    $ gcc out.s -o out
+    $ ./out
+    $ echo $?
+    */
+    fs::write("out.s", &asm).expect("failed to write assembly");
 }

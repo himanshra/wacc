@@ -6,8 +6,10 @@ impl Codegen {
     pub fn generate(program: &Program) -> String {
         let mut out = String::new();
 
-        out.push_str(".globl _main\n");
-        out.push_str("_main:\n");
+        let fn_name = program.function.name.clone();
+
+        out.push_str(format!(".globl _{}\n", fn_name).as_str());
+        out.push_str(format!("_{}:\n", fn_name).as_str());
 
         match &program.function.body {
             Stmt::Return(expr) => match expr {
