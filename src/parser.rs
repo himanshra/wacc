@@ -1,8 +1,14 @@
 use crate::lexer::{Lexer, TokenKind};
 
 #[derive(Debug)]
-pub enum Expr {
-    Number(i64),
+pub struct Program {
+    pub function: Function,
+}
+
+#[derive(Debug)]
+pub struct Function {
+    pub name: String,
+    pub body: Stmt,
 }
 
 #[derive(Debug)]
@@ -11,8 +17,8 @@ pub enum Stmt {
 }
 
 #[derive(Debug)]
-pub struct Program {
-    pub body: Stmt,
+pub enum Expr {
+    Constant(i64),
 }
 
 pub struct Parser {
@@ -57,7 +63,7 @@ impl Parser {
             TokenKind::Number(n) => {
                 let value = *n;
                 self.advance()?;
-                Ok(Expr::Number(value))
+                Ok(Expr::Constant(value))
             }
             _ => Err("expected number".to_string()),
         }
@@ -72,17 +78,32 @@ impl Parser {
 
     pub fn parse_program(&mut self) -> Result<Program, String> {
         self.expect(TokenKind::Int)?;
-        self.expect(TokenKind::Main)?;
+
+        let name = match &self.current {
+            TokenKind::Main => {
+                self.advance()?;
+                "main".to_string()
+            }
+            TokenKind::Identifier(_) => {
+                return Err("only 'main' function is allowed".to_string());
+            }
+            _ => {
+                return Err("expected function name".to_string());
+            }
+        };
+
         self.expect(TokenKind::LParen)?;
         self.expect(TokenKind::Void)?;
         self.expect(TokenKind::RParen)?;
         self.expect(TokenKind::LBrace)?;
 
-        let stmt = self.parse_return()?;
+        let body = self.parse_return()?;
 
         self.expect(TokenKind::RBrace)?;
         self.expect(TokenKind::Eof)?;
 
-        Ok(Program { body: stmt })
+        Ok(Program {
+            function: Function { name, body },
+        })
     }
 }
